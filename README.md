@@ -1,122 +1,75 @@
-# Agent-Native Web Research MCP
+# Free Web Search MCP
 
-A lightweight, security-focused MCP server for AI agents to research the public web with a disciplined workflow:
+A lightweight MCP server for AI agents that provides **web search, news search, and web scraping** without a search API key.
 
-**SEARCH → SELECT/VERIFY → SCRAPE → CROSS-CHECK → ANSWER**
+It is designed for research workflows where an agent should:
 
-Built for agent-native usage rather than dumping raw search results into the model context.
-
-## Why this project
-
-Many web-search tools stop at search results. This server separates **discovery** from **evidence**:
-
-- Search results are marked as `discovery`.
-- Selected pages are scraped into bounded text.
-- URLs are canonicalized and deduplicated.
-- Redirects are revalidated.
-- Public-IP checks and DNS pinning reduce SSRF risk.
-- Responses and extracted content are size-bounded.
-- Short-lived caches reduce repeated upstream requests.
-- Scraping can run in bounded parallel batches.
-- Structured MCP output gives agents metadata they can use for source selection.
-
-The server intentionally avoids pretending that the first search result is automatically authoritative.
+**SEARCH → SELECT / VERIFY → SCRAPE → CROSS-CHECK → ANSWER**
 
 ## Features
 
-- **Bing Web Search** through the public Bing web interface.
-- **Bing News Search** with freshness filtering: `hour`, `day`, `week`, `month`.
-- **Single-URL scraping** with Trafilatura.
-- **Bounded search + scrape** for up to 5 selected results in parallel.
-- **Structured output** for search and search+scrape tools.
-- **Canonical URL normalization** and tracking-parameter removal.
-- **Bing redirect decoding**.
-- **URL deduplication**.
-- **Domain filtering**.
-- **SSRF-oriented URL validation**:
-  - only `http` / `https`
-  - public/global IP validation
-  - localhost blocking
-  - redirect-by-redirect revalidation
-  - DNS pinning through `CURLOPT_RESOLVE`
-- **Deterministic HTTP behavior** with `trust_env=False`.
-- **Retry handling** for transient HTTP/network failures.
-- **Response limits** to control memory and token usage.
-- **Binary-content protection** so PDFs/images/archives are not blindly turned into garbage text.
-- **Short TTL caches** for search and scrape results.
-- **Multiple extraction modes**: `fast`, `balanced`, `precision`, `recall`.
+- Web search with Bing
+- News search with freshness filters
+- Single-page web scraping
+- Search + bounded parallel scraping
+- Structured MCP output
+- URL canonicalization and deduplication
+- Redirect validation
+- SSRF-oriented public-IP checks
+- DNS pinning with `CURLOPT_RESOLVE`
+- Response and output size limits
+- Short-lived search and scrape caches
+- Retry handling for transient failures
+- Binary-content protection
+- Trafilatura extraction
+- Extraction modes: `fast`, `balanced`, `precision`, `recall`
+- Local **stdio** MCP transport
+- No search API key required
 
-## MCP Tools
+## MCP tools
 
-| Tool | Purpose |
+| Tool | What it does |
 |---|---|
-| `search_web` | Discover relevant web sources |
-| `search_news` | Discover recent news sources |
-| `scrape_url` | Extract content from one selected URL |
-| `search_and_scrape` | Search, then scrape a bounded set of results |
+| `search_web` | Find web sources |
+| `search_news` | Find recent news |
+| `scrape_url` | Extract one selected web page |
+| `search_and_scrape` | Search, then scrape up to 5 results |
 
-### Agent workflow
+### Recommended agent workflow
 
-Use the tools in this order for evidence-heavy research:
-
-```text
-1. search_web / search_news
-2. Inspect title, URL, domain, snippet, age, canonical_url
-3. Select authoritative or relevant sources
-4. scrape_url on selected URLs
-5. Cross-check important claims across independent sources
-6. Answer with citations/links from the agent
-```
-
-`search_and_scrape` is available as a faster path for clear queries, but its output is still not a guarantee that every returned source is authoritative.
-
-## Project structure
-
-Recommended repository layout:
+For research that needs reliable evidence:
 
 ```text
-agent-native-web-research-mcp/
-├── server.py
-├── requirements.txt
-├── README.md
-└── LICENSE
+1. Search
+2. Inspect title, URL, domain, date/age and snippet
+3. Select relevant / authoritative sources
+4. Scrape selected URLs
+5. Cross-check important claims
+6. Answer with the verified sources
 ```
 
-Rename the current script to `server.py` before publishing:
+Search results are **discovery data**, not automatic proof. A scraped page is evidence from that page, not a guarantee that the source itself is correct.
 
-```bash
-mv 'local-scrape-mcp-server(2).py' server.py
-```
+---
+
+# Installation
 
 ## Requirements
 
 - Python 3.10+
 - Internet access
-- An MCP-compatible client/agent
-- Linux, macOS, or Windows
+- An MCP-compatible client
 
-Runtime dependencies:
-
-```text
-mcp
-curl-cffi
-lxml
-trafilatura
-typing-extensions
-```
-
-## Installation
-
-### 1. Clone
+## 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/agent-native-web-research-mcp.git
-cd agent-native-web-research-mcp
+git clone https://github.com/digitalninjanv/free-web-search-mcp.git
+cd free-web-search-mcp
 ```
 
-### 2. Create a virtual environment
+## 2. Create a virtual environment
 
-Linux/macOS:
+Linux / macOS:
 
 ```bash
 python3 -m venv .venv
@@ -127,204 +80,312 @@ Windows PowerShell:
 
 ```powershell
 py -m venv .venv
-.venv\Scripts\Activate.ps1
+.venv\\Scripts\\Activate.ps1
 ```
 
-### 3. Install dependencies
+## 3. Install dependencies
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install mcp curl-cffi lxml trafilatura typing-extensions
+python -m pip install -r requirements.txt
 ```
 
-### 4. Validate the Python file
+The server imports:
+
+```text
+mcp
+curl-cffi
+lxml
+trafilatura
+typing-extensions
+```
+
+## 4. Check the source
+
+The current repository entry point is:
+
+```text
+local-scrape-mcp-server.py
+```
+
+Run:
 
 ```bash
-python -m py_compile server.py
+python -m py_compile local-scrape-mcp-server.py
 ```
 
-If this command returns no output, the Python source passes the syntax compiler.
+No output means the Python source passed the syntax check.
 
-### 5. Start the MCP server
-
-The server uses MCP **stdio** transport:
+## 5. Run the server manually
 
 ```bash
-python server.py
+python local-scrape-mcp-server.py
 ```
 
-Keep stdout reserved for MCP traffic. Application logging is sent through the Python logger.
+The server uses **MCP stdio**, so it is normally started by the MCP client rather than kept open manually.
 
 ---
 
-# OpenCode
+# OpenCode V2
 
-OpenCode supports local MCP servers over stdio. Current OpenCode V2 configuration uses:
+OpenCode V2 uses:
 
 ```text
-mcp.servers.<name>
+mcp.servers.<server-name>
 ```
 
-### Option A — add from the CLI
+Local servers use `type: "local"` and a command array. OpenCode V2 uses `disabled`, not `enabled`. citeturn696106search0turn696106search2
 
-From the project that should use the server:
+## Recommended configuration
 
-```bash
-opencode mcp add web-research -- python3 /ABS/PATH/agent-native-web-research-mcp/server.py
+Create or edit:
+
+```text
+~/.config/opencode/opencode.jsonc
 ```
 
-Then verify:
+or use a project-local OpenCode config. citeturn696106search2
 
-```bash
-opencode mcp list
-```
-
-### Option B — configure `opencode.jsonc`
+Example:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "servers": {
-      "web-research": {
+      "free-web-search": {
         "type": "local",
         "command": [
-          "/ABS/PATH/agent-native-web-research-mcp/.venv/bin/python",
-          "/ABS/PATH/agent-native-web-research-mcp/server.py"
-        ]
+          "/ABS/PATH/free-web-search-mcp/.venv/bin/python",
+          "/ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py"
+        ],
+        "cwd": "/ABS/PATH/free-web-search-mcp",
+        "environment": {
+          "PYTHONUNBUFFERED": "1"
+        },
+        "disabled": false
       }
     }
   }
 }
 ```
 
-Using the virtual-environment Python is recommended because it guarantees that OpenCode starts the server with the project's intended dependencies.
+### Example using a real Linux venv
 
-After OpenCode connects, the tools are exposed under the server name, such as:
+Replace the paths with your actual paths:
 
-```text
-web-research_search_web
-web-research_search_news
-web-research_scrape_url
-web-research_search_and_scrape
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "free-web-search": {
+        "type": "local",
+        "command": [
+          "/home/USER/.venvs/free-web-search-mcp/bin/python3",
+          "/home/USER/free-web-search-mcp/local-scrape-mcp-server.py"
+        ],
+        "cwd": "/home/USER/free-web-search-mcp",
+        "environment": {
+          "PATH": "/home/USER/.venvs/free-web-search-mcp/bin:/usr/local/bin:/usr/bin:/bin",
+          "PYTHONUNBUFFERED": "1"
+        },
+        "disabled": false
+      }
+    }
+  }
+}
 ```
 
-OpenCode also supports Code Mode; keep the server name short and unique.
+Use the Python executable from the same environment where the MCP dependencies were installed.
+
+Find it with:
+
+```bash
+which python
+```
+
+or, after activating the venv:
+
+```bash
+which python3
+```
+
+### OpenCode CLI
+
+OpenCode V2 can also add a local MCP server from the CLI:
+
+```bash
+opencode mcp add free-web-search -- \
+  /ABS/PATH/free-web-search-mcp/.venv/bin/python \
+  /ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py
+```
+
+Then check the connection:
+
+```bash
+opencode mcp list
+```
+
+OpenCode documents local MCP servers and the `opencode mcp add ... -- command args` syntax. citeturn696106search0turn696106search3
+
+### Tool names in OpenCode
+
+OpenCode prefixes MCP tools with the server name:
+
+```text
+free-web-search_search_web
+free-web-search_search_news
+free-web-search_scrape_url
+free-web-search_search_and_scrape
+```
+
+OpenCode documents this naming behavior for MCP tools. citeturn696106search0
 
 ---
 
 # Pi Coding Agent
 
-Pi currently supports MCP through its MCP integration/extension ecosystem. The exact setup depends on the Pi MCP adapter/version you use.
+Pi's core intentionally keeps MCP out of the minimal core, so **do not copy the OpenCode `mcp.servers` configuration into Pi**. Use an MCP adapter/extension. citeturn759839search6turn759839search1
 
-A common configuration shape is a project `.mcp.json`:
+One current option is **pi-mcp-adapter**.
+
+## 1. Install the adapter
+
+```bash
+pi install npm:pi-mcp-adapter
+```
+
+Pi's package registry lists `pi-mcp-adapter` as an MCP adapter extension, and the package documents this installation command. citeturn622034search7turn622034search8
+
+## 2. Configure the server
+
+For a project-local setup, create:
+
+```text
+.mcp.json
+```
+
+Example:
 
 ```json
 {
   "mcpServers": {
-    "web-research": {
-      "command": "/ABS/PATH/agent-native-web-research-mcp/.venv/bin/python",
+    "free-web-search": {
+      "command": "/ABS/PATH/free-web-search-mcp/.venv/bin/python",
       "args": [
-        "/ABS/PATH/agent-native-web-research-mcp/server.py"
-      ]
+        "/ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
     }
   }
 }
 ```
 
-For installations using the Pi MCP adapter, user-global MCP configuration is commonly placed under:
+The Pi MCP adapter documents `.mcp.json` as a standard project configuration format. citeturn622034search3turn622034search6
 
-```text
-~/.pi/agent/mcp.json
-```
-
-or shared MCP configuration such as:
-
-```text
-~/.config/mcp/mcp.json
-```
-
-Then expose the server with the same stdio command:
+### Linux example
 
 ```json
 {
   "mcpServers": {
-    "web-research": {
-      "command": "/ABS/PATH/agent-native-web-research-mcp/.venv/bin/python",
+    "free-web-search": {
+      "command": "/home/USER/.venvs/free-web-search-mcp/bin/python3",
       "args": [
-        "/ABS/PATH/agent-native-web-research-mcp/server.py"
-      ]
+        "/home/USER/free-web-search-mcp/local-scrape-mcp-server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
     }
   }
 }
 ```
 
-If your Pi installation uses a different MCP adapter, follow that adapter's current file precedence and server schema.
+Then start Pi in the project:
+
+```bash
+pi
+```
+
+Open the MCP adapter interface with:
+
+```text
+/mcp
+```
+
+The current adapter documentation also supports shared global MCP configuration such as `~/.config/mcp/mcp.json`. citeturn622034search3turn622034search6
+
+> Pi MCP support changes over time. Keep the adapter version and its documentation in mind when upgrading Pi. The server itself is a standard stdio MCP server, so only the client-side configuration changes.
 
 ---
 
-# Claude Desktop
+# Generic MCP client
 
-For a standard local MCP/stdio configuration:
+This server is a local **stdio MCP server**.
 
-```json
-{
-  "mcpServers": {
-    "web-research": {
-      "command": "/ABS/PATH/agent-native-web-research-mcp/.venv/bin/python",
-      "args": [
-        "/ABS/PATH/agent-native-web-research-mcp/server.py"
-      ]
-    }
-  }
-}
+The client only needs to start:
+
+```bash
+/ABS/PATH/free-web-search-mcp/.venv/bin/python \
+  /ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py
 ```
 
-Restart the client after changing the MCP configuration.
+The important part is that the command points to the Python environment where the dependencies are installed.
 
 ---
 
-# Usage examples
+# Usage
 
 ## Web search
 
+Call:
+
 ```text
-search_web(
-  query="Python 3.14 release changes",
-  count=5
-)
+search_web
 ```
 
-Returns structured discovery data such as:
+Example parameters:
 
 ```json
 {
   "query": "Python 3.14 release changes",
-  "source_type": "web",
-  "results": [
-    {
-      "rank": 1,
-      "title": "...",
-      "url": "...",
-      "canonical_url": "...",
-      "domain": "python.org",
-      "snippet": "...",
-      "source_type": "web",
-      "evidence_role": "discovery"
-    }
-  ]
+  "count": 5
 }
+```
+
+The response includes structured fields such as:
+
+```text
+rank
+title
+url
+canonical_url
+domain
+snippet
+source_type
+evidence_role
+```
+
+Search results use:
+
+```text
+evidence_role = discovery
 ```
 
 ## News search
 
-```text
-search_news(
-  query="OpenAI",
-  count=5,
-  freshness="day",
-  market="en-US"
-)
+Example:
+
+```json
+{
+  "query": "OpenAI",
+  "count": 5,
+  "freshness": "day",
+  "market": "en-US"
+}
 ```
 
 Supported freshness values:
@@ -336,15 +397,17 @@ week
 month
 ```
 
-## Scrape one source
+## Scrape a selected page
 
-```text
-scrape_url(
-  url="https://example.com/article",
-  output_format="markdown",
-  max_chars=25000,
-  extraction_mode="fast"
-)
+Example:
+
+```json
+{
+  "url": "https://example.com/article",
+  "output_format": "markdown",
+  "max_chars": 25000,
+  "extraction_mode": "fast"
+}
 ```
 
 Supported output formats:
@@ -365,98 +428,81 @@ precision
 recall
 ```
 
-## Search and scrape
+## Search + scrape
 
-```text
-search_and_scrape(
-  query="latest Linux kernel security changes",
-  count=5,
-  news=false,
-  max_chars=12000,
-  extraction_mode="fast"
-)
+Example:
+
+```json
+{
+  "query": "latest Linux kernel security changes",
+  "count": 5,
+  "news": false,
+  "max_chars": 12000,
+  "extraction_mode": "fast"
+}
 ```
 
-The implementation caps this fast path at 5 scraped results and uses bounded parallelism.
+The server bounds this operation to a maximum of 5 scraped results and at most 3 concurrent workers.
 
 ---
 
-# Security model
+# Security
 
-This server performs network access on behalf of an AI agent, so network-boundary checks are treated as a first-class feature.
+This project performs outbound HTTP requests, so URL and network validation are important.
 
-### URL validation
+## SSRF-oriented protection
 
-Only:
+The server:
 
-```text
-http://
-https://
-```
+- accepts only `http` and `https`
+- rejects URLs containing username/password credentials
+- resolves hostnames before connecting
+- allows only globally routable/public IP addresses
+- blocks localhost and other non-public destinations
+- validates every redirect target again
+- pins resolved addresses with libcurl `CURLOPT_RESOLVE`
 
-are accepted.
+## Response limits
 
-Userinfo credentials in URLs are rejected.
-
-Hostnames are normalized to ASCII/IDNA form before validation.
-
-### SSRF protection
-
-The server resolves hostnames and accepts only globally routable/public addresses. Localhost and non-public targets are blocked.
-
-Redirect targets are validated again instead of being blindly followed.
-
-### DNS pinning
-
-Resolved public IPs are pinned to the request through libcurl's `CURLOPT_RESOLVE` support. Each thread owns its own `curl_cffi` session so per-session DNS state is not shared unsafely between concurrent requests.
-
-### Response limits
-
-Current hard limits in the implementation include:
+Current implementation limits include:
 
 ```text
-Maximum redirects:       5
-Maximum results:         50
-Maximum query length:    1000 characters
-Maximum response body:   4 MiB
-Maximum extracted text:  100,000 characters
-Maximum domain filters:  5
-Maximum batch scrapes:   5
-Batch workers:           3
+Max redirects:       5
+Max search results:   50
+Max query length:     1000 characters
+Max HTTP response:   4 MiB
+Max extracted text:  100,000 characters
+Max domain filters:  5
+Max batch scrapes:   5
+Batch workers:        3
 ```
 
-These bounds reduce memory pressure, runaway downloads, and unnecessary context growth.
+## Binary content
 
-### Retry policy
+The server intentionally rejects common binary content such as PDFs, images, archives, audio, and video instead of blindly decoding them as text.
 
-Only transient HTTP/network conditions are retried. The implementation supports `Retry-After` and uses bounded exponential backoff with jitter.
+The current scraper does not execute JavaScript.
 
-### Binary-content protection
+## Retries
 
-Known binary content types and common binary magic bytes are rejected before they can become huge, unusable text payloads.
-
-The current server is intended for text-oriented web pages; it does not render JavaScript.
+Only transient failures are retried. The implementation also supports `Retry-After` and bounded backoff with jitter.
 
 ---
 
-# Performance and token-efficiency design
+# Performance and token efficiency
 
-The implementation is deliberately conservative about context size:
+The server is designed to avoid unnecessary context growth:
 
-- Search output contains structured metadata instead of full page bodies.
-- Scraping is explicit rather than automatic for every result.
-- `max_chars` is enforced.
-- Search responses use a short TTL cache.
-- Scraped pages use a separate short TTL cache.
-- Canonical URLs improve cache hits and deduplication.
-- The batch path uses bounded concurrency instead of unlimited parallel requests.
-- Fast extraction is the normal hot path; slower extraction is used only when needed.
+- Search returns compact structured metadata.
+- Pages are scraped only when needed.
+- `max_chars` bounds extracted content.
+- Search results are cached briefly.
+- Scraped pages are cached briefly.
+- Canonical URLs improve deduplication and cache reuse.
+- Batch scraping has bounded concurrency.
+- `fast` extraction is the normal path.
 
-This makes the server suitable for agents that need fresh web evidence without filling the context window with irrelevant pages.
-
-## Cache behavior
-
-Current defaults:
+Current cache defaults:
 
 ```text
 Search cache TTL:   120 seconds
@@ -465,232 +511,140 @@ Search cache size:   64 entries
 Scrape cache size:   32 entries
 ```
 
-Caches are process-local and are not persistent across restarts.
+Caches are in-memory and disappear when the process exits.
 
 ---
 
-# Source quality guidance
+# Source quality
 
-The MCP server deliberately returns:
+This server does not decide whether a source is true.
 
-```text
-evidence_role = discovery
-```
-
-for search results.
-
-After scraping a selected source, the role becomes:
-
-```text
-evidence_role = scraped_content
-```
-
-Agents should still evaluate:
+Agents should consider:
 
 - primary vs secondary source
-- domain authority
-- date/freshness
+- source authority
+- publication date
 - canonical URL
-- whether the page actually supports the claim
-- whether another independent source agrees
-- whether the site is relevant to the question
+- whether the page directly supports the claim
+- independent confirmation
+- relevance to the question
 
-A scrape success means text was extracted; it does **not** mean the source is correct.
+Use search for discovery and scraping for evidence.
 
 ---
 
-# Important limitations
+# Limitations
 
-### Bing HTML is not a stable public API
+### Bing HTML parsing
 
-This project parses the Bing web/news HTML interface. Markup changes can break the search parser without any code change in this repository.
+Search parsing is based on Bing's public HTML pages rather than a contractual search API. Changes to Bing markup can require parser updates.
 
-For production systems that require a contractual API, consider using an official search API or another maintained search provider.
+### JavaScript-heavy pages
 
-### JavaScript-heavy websites
-
-The server does not execute JavaScript. Pages that require client-side rendering may return incomplete or unusable extraction.
+Pages that depend on browser-side JavaScript may not extract correctly.
 
 ### Binary documents
 
-PDFs, images, archives, audio, video, and other binary content are intentionally not treated as ordinary text pages.
+Binary documents are intentionally out of scope for the normal text scraper.
 
-### Anti-bot / challenge pages
+### Anti-bot pages
 
-If Bing returns a challenge or CAPTCHA page, the server raises an error instead of treating the page as a valid empty search result.
+If Bing returns a challenge/CAPTCHA page, the server reports an error instead of treating it as a legitimate zero-result search.
 
-### Terms and acceptable use
+### No search API key
 
-Use this software responsibly and in accordance with the terms, policies, rate limits, and applicable law of the sites you access.
+The project does not require a Bing Search API key because it uses the public Bing web/news HTML endpoints. Availability and acceptable use can change, so users should follow the applicable provider terms and limits.
 
 ---
 
 # Development
 
-Install the runtime dependencies in a virtual environment:
+Activate the environment:
 
 ```bash
-python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install mcp curl-cffi lxml trafilatura typing-extensions
+```
+
+Install dependencies:
+
+```bash
+python -m pip install -r requirements.txt
 ```
 
 Syntax check:
 
 ```bash
-python -m py_compile server.py
+python -m py_compile local-scrape-mcp-server.py
 ```
 
-Run locally:
+Run:
 
 ```bash
-python server.py
+python local-scrape-mcp-server.py
 ```
 
-For MCP debugging, connect it through an MCP client and inspect tool registration/call errors from the client logs.
-
-## Suggested repository files
-
-For a polished public release, add:
-
-```text
-README.md
-LICENSE
-.gitignore
-requirements.txt
-server.py
-CHANGELOG.md
-```
-
-A CI workflow is also recommended once tests are added.
+For MCP debugging, inspect the MCP client's connection and tool-registration logs.
 
 ---
 
-# Why "agent-native"
+# Repository structure
 
-The server does not attempt to decide the final answer.
+Current entry point:
 
-Its job is to give an agent a clean research substrate:
+```text
+free-web-search-mcp/
+├── local-scrape-mcp-server.py
+├── requirements.txt
+└── README.md
+```
+
+Recommended future additions:
+
+```text
+LICENSE
+.gitignore
+CHANGELOG.md
+tests/
+.github/workflows/
+```
+
+---
+
+# Why this MCP server?
+
+Most search tools stop at discovery.
+
+This project is intentionally structured so an agent can separate:
 
 ```text
 Discovery
    ↓
-Candidate sources
+Source selection
    ↓
 URL validation
    ↓
-Selected source
-   ↓
 Content extraction
    ↓
-Independent cross-check
+Cross-check
    ↓
-Agent answer
+Answer
 ```
 
-This keeps retrieval and judgment separate.
-
----
-
-# Roadmap
-
-Possible future additions:
-
-- optional non-Bing search backends
-- richer source-type classification
-- robots/policy-aware fetching
-- HTML extraction fixtures and regression tests
-- integration tests against mocked HTTP servers
-- package/distribution support
-- optional Streamable HTTP transport
-- observability metrics
-- configurable cache budgets
-- more precise article/date extraction
-- search-provider failover
-
----
-
-# Contributing
-
-Issues and pull requests are welcome.
-
-Useful contributions include:
-
-- parser compatibility fixes
-- security hardening
-- test coverage
-- performance improvements
-- MCP compatibility
-- documentation improvements
-- new search backends
-
-Before submitting a pull request:
-
-```bash
-python -m py_compile server.py
-```
-
-Add regression coverage for parser or security changes where practical.
+That makes it useful for research-heavy coding agents and AI workflows that need fresh web evidence without sending entire search pages into the context window.
 
 ---
 
 # License
 
-No license is declared by the current source file.
+No open-source license is currently declared in this repository.
 
-Before making the repository public, choose and add an explicit open-source license (for example, MIT) that you are legally entitled to use.
-
----
-
-## Repository metadata recommendation
-
-### Recommended repository name
-
-```text
-agent-native-web-research-mcp
-```
-
-Why this name:
-
-- `agent` targets the AI-agent use case.
-- `web-research` captures the core capability.
-- `mcp` makes the integration format immediately discoverable.
-- The name is more differentiated than generic names such as `mcp-web-search`.
-
-### Recommended GitHub description
-
-```text
-Agent-native MCP server for web research: Bing Web/News search, secure URL fetching, SSRF protection, canonicalization, scraping, caching, and bounded parallel extraction.
-```
-
-### Recommended topics
-
-```text
-mcp
-model-context-protocol
-mcp-server
-ai-agents
-ai-agent
-web-research
-web-search
-web-scraping
-python
-bing-search
-bing-news
-trafilatura
-curl-cffi
-ssrf
-llm-tools
-```
-
-Avoid claiming "viral", "best", "most accurate", or "production-ready" unless you have public benchmark/test evidence supporting those claims.
+Add an explicit `LICENSE` file before presenting the project as a reusable open-source package.
 
 ---
 
-## Documentation references
+## Links
 
 - OpenCode MCP servers: https://opencode.ai/v2/docs/mcp-servers
-- OpenCode configuration: https://dev.opencode.ai/docs/config/
-- Pi coding-agent repository: https://github.com/SuperCodeAgents/pi-code
-- GitHub repository best practices: https://docs.github.com/en/repositories/creating-and-managing-repositories/best-practices-for-repositories
+- OpenCode config: https://opencode.ai/v2/docs/config
+- OpenCode CLI: https://opencode.ai/v2/docs/cli/commands
+- Pi MCP adapter: https://pi.dev/packages/pi-mcp-adapter
