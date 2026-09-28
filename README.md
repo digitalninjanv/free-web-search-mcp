@@ -191,7 +191,7 @@ Keep the resulting absolute path. You will use it in the MCP configuration.
 
 # 6. Configure OpenCode V2
 
-OpenCode V2 uses `mcp.servers.<name>` for MCP servers. A local MCP server uses `type: "local"` and a command array containing the executable plus its arguments. The process can also define `cwd`, `environment`, and `disabled`; `disabled: false` is the normal enabled state. urlOpenCode MCP server documentationhttps://opencode.ai/v2/docs/mcp-servers
+OpenCode V2 uses `mcp.servers.<name>` for MCP servers. A local MCP server uses `type: "local"` and a command array containing the executable plus its arguments. The process can also define `cwd`, `environment`, and `disabled`; `disabled: false` is the normal enabled state. [OpenCode MCP server documentation](https://opencode.ai/v2/docs/mcp-servers)
 
 The global OpenCode configuration is normally:
 
@@ -205,7 +205,7 @@ or:
 ~/.config/opencode/opencode.jsonc
 ```
 
-OpenCode supports JSON and JSONC. urlOpenCode configuration documentationhttps://opencode.ai/v2/docs/config
+OpenCode supports JSON and JSONC. [OpenCode configuration documentation](https://opencode.ai/v2/docs/config)
 
 ## Recommended configuration
 
@@ -386,7 +386,7 @@ for a project, or:
 ~/.config/mcp/mcp.json
 ```
 
-for a user-global shared configuration. urlPi MCP Adapter documentationhttps://github.com/nicobailon/pi-mcp-adapter
+for a user-global shared configuration. [Pi MCP Adapter documentation](https://github.com/nicobailon/pi-mcp-adapter)
 
 ## Install the Pi MCP adapter
 
@@ -394,7 +394,7 @@ for a user-global shared configuration. urlPi MCP Adapter documentation
 pi install npm:pi-mcp-adapter
 ```
 
-The current package is published for Pi's MCP integration. Review third-party package source before installation. urlPi MCP Adapter packagehttps://pi.dev/packages/pi-mcp-adapter
+The current package is published for Pi's MCP integration. Review third-party package source before installation. [Pi MCP Adapter package](https://pi.dev/packages/pi-mcp-adapter)
 
 ## Project-local Pi setup
 
