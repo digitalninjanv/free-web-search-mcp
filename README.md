@@ -1,96 +1,63 @@
 # Free Web Search MCP
 
-A lightweight MCP server for AI agents that provides **web search, news search, and web scraping** without a search API key.
+A lightweight **MCP server for AI agents** that provides web search, news search, and web scraping through Bing's public web interface.
 
-It is designed for research workflows where an agent should:
+Designed for research workflows:
 
-**SEARCH → SELECT / VERIFY → SCRAPE → CROSS-CHECK → ANSWER**
+```text
+SEARCH → SELECT / VERIFY → SCRAPE → CROSS-CHECK → ANSWER
+```
+
+## What this project does
+
+This MCP server gives an AI agent four tools:
+
+| Tool | Purpose |
+|---|---|
+| `search_web` | Search the web and return structured source metadata |
+| `search_news` | Search recent news with freshness filters |
+| `scrape_url` | Extract text from one selected web page |
+| `search_and_scrape` | Search, then scrape a bounded number of results |
+
+Search results are treated as **discovery**, not automatic evidence. The agent should select relevant sources, scrape them, and cross-check important claims.
 
 ## Features
 
-- Web search with Bing
-- News search with freshness filters
-- Single-page web scraping
-- Search + bounded parallel scraping
+- Bing Web Search
+- Bing News Search
+- Freshness filters: `hour`, `day`, `week`, `month`
+- Web-page extraction with Trafilatura
 - Structured MCP output
-- URL canonicalization and deduplication
-- Redirect validation
-- SSRF-oriented public-IP checks
+- URL canonicalization
+- Bing redirect decoding
+- URL deduplication
+- Domain filters
+- SSRF-oriented public-IP validation
+- Redirect-by-redirect URL validation
 - DNS pinning with `CURLOPT_RESOLVE`
-- Response and output size limits
-- Short-lived search and scrape caches
+- `curl_cffi` session reuse with `trust_env=False`
 - Retry handling for transient failures
+- `Retry-After` support
+- Response-size limits
 - Binary-content protection
-- Trafilatura extraction
+- Short-lived search and scrape caches
+- Bounded parallel scraping
 - Extraction modes: `fast`, `balanced`, `precision`, `recall`
-- Local **stdio** MCP transport
-- No search API key required
-
-## MCP tools
-
-| Tool | What it does |
-|---|---|
-| `search_web` | Find web sources |
-| `search_news` | Find recent news |
-| `scrape_url` | Extract one selected web page |
-| `search_and_scrape` | Search, then scrape up to 5 results |
-
-### Recommended agent workflow
-
-For research that needs reliable evidence:
-
-```text
-1. Search
-2. Inspect title, URL, domain, date/age and snippet
-3. Select relevant / authoritative sources
-4. Scrape selected URLs
-5. Cross-check important claims
-6. Answer with the verified sources
-```
-
-Search results are **discovery data**, not automatic proof. A scraped page is evidence from that page, not a guarantee that the source itself is correct.
+- Local MCP stdio transport
+- No Bing Search API key required
 
 ---
 
-# Installation
+# 1. Requirements
 
-## Requirements
+You need:
 
 - Python 3.10+
+- Git
 - Internet access
-- An MCP-compatible client
+- An MCP-compatible client such as OpenCode or Pi
 
-## 1. Clone the repository
-
-```bash
-git clone https://github.com/digitalninjanv/free-web-search-mcp.git
-cd free-web-search-mcp
-```
-
-## 2. Create a virtual environment
-
-Linux / macOS:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-Windows PowerShell:
-
-```powershell
-py -m venv .venv
-.venv\\Scripts\\Activate.ps1
-```
-
-## 3. Install dependencies
-
-```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-The server imports:
+Runtime packages:
 
 ```text
 mcp
@@ -100,67 +67,170 @@ trafilatura
 typing-extensions
 ```
 
-## 4. Check the source
+---
 
-The current repository entry point is:
+# 2. Get the source
+
+Clone the repository somewhere convenient. For example:
+
+```bash
+mkdir -p ~/.local/src
+git clone https://github.com/digitalninjanv/free-web-search-mcp.git ~/.local/src/free-web-search-mcp
+cd ~/.local/src/free-web-search-mcp
+```
+
+Check the files:
+
+```bash
+ls -la
+```
+
+The MCP entry point in this repository is:
 
 ```text
 local-scrape-mcp-server.py
 ```
 
-Run:
+---
+
+# 3. Install dependencies in a dedicated Python environment
+
+Using a dedicated virtual environment avoids conflicts with the system Python.
+
+Create it:
 
 ```bash
-python -m py_compile local-scrape-mcp-server.py
+python3 -m venv ~/.venvs/mcp-local-scrape
 ```
 
-No output means the Python source passed the syntax check.
-
-## 5. Run the server manually
+Upgrade pip:
 
 ```bash
-python local-scrape-mcp-server.py
+~/.venvs/mcp-local-scrape/bin/python3 -m pip install --upgrade pip
 ```
 
-The server uses **MCP stdio**, so it is normally started by the MCP client rather than kept open manually.
+Install the project dependencies:
+
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 -m pip install -r ~/.local/src/free-web-search-mcp/requirements.txt
+```
+
+Verify that the packages are available:
+
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 -c "import mcp, curl_cffi, lxml, trafilatura; print('dependencies: OK')"
+```
 
 ---
 
-# OpenCode V2
+# 4. Install the MCP server into OpenCode's local server directory
 
-OpenCode V2 uses:
+This step is optional as a filesystem convention, but it is the layout used by the OpenCode example below.
 
-```text
-mcp.servers.<server-name>
+Create the directory:
+
+```bash
+mkdir -p ~/.config/opencode/mcp-servers/local-scrape
 ```
 
-Local servers use `type: "local"` and a command array. OpenCode V2 uses `disabled`, not `enabled`. citeturn696106search0turn696106search2
+Copy the server file and rename it to the conventional `server.py` name:
 
-## Recommended configuration
+```bash
+cp ~/.local/src/free-web-search-mcp/local-scrape-mcp-server.py \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
 
-Create or edit:
+You should now have:
+
+```text
+~/.config/opencode/
+└── mcp-servers/
+    └── local-scrape/
+        └── server.py
+```
+
+Check it:
+
+```bash
+ls -l ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+## Why copy the file?
+
+The Git repository remains your source code, while OpenCode gets a stable local path for the MCP server.
+
+You can update the installed server later with:
+
+```bash
+cp ~/.local/src/free-web-search-mcp/local-scrape-mcp-server.py \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+---
+
+# 5. Validate the installed server
+
+First run a syntax check:
+
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 -m py_compile \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+No output means the file passed Python's syntax compiler.
+
+You can also verify the interpreter path:
+
+```bash
+readlink -f ~/.venvs/mcp-local-scrape/bin/python3
+```
+
+Keep the resulting absolute path. You will use it in the MCP configuration.
+
+---
+
+# 6. Configure OpenCode V2
+
+OpenCode V2 uses `mcp.servers.<name>` for MCP servers. A local MCP server uses `type: "local"` and a command array containing the executable plus its arguments. The process can also define `cwd`, `environment`, and `disabled`; `disabled: false` is the normal enabled state. urlOpenCode MCP server documentationhttps://opencode.ai/v2/docs/mcp-servers
+
+The global OpenCode configuration is normally:
+
+```text
+~/.config/opencode/opencode.json
+```
+
+or:
 
 ```text
 ~/.config/opencode/opencode.jsonc
 ```
 
-or use a project-local OpenCode config. citeturn696106search2
+OpenCode supports JSON and JSONC. urlOpenCode configuration documentationhttps://opencode.ai/v2/docs/config
 
-Example:
+## Recommended configuration
+
+Open:
+
+```bash
+nano ~/.config/opencode/opencode.jsonc
+```
+
+Add this inside the top-level configuration:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "servers": {
-      "free-web-search": {
+      "local-scrape": {
         "type": "local",
         "command": [
-          "/ABS/PATH/free-web-search-mcp/.venv/bin/python",
-          "/ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py"
+          "/home/USER/.venvs/mcp-local-scrape/bin/python3",
+          "/home/USER/.config/opencode/mcp-servers/local-scrape/server.py"
         ],
-        "cwd": "/ABS/PATH/free-web-search-mcp",
+        "cwd": "/home/USER/.config/opencode/mcp-servers/local-scrape",
         "environment": {
+          "PATH": "/home/USER/.venvs/mcp-local-scrape/bin:/usr/local/bin:/usr/bin:/bin",
           "PYTHONUNBUFFERED": "1"
         },
         "disabled": false
@@ -170,24 +240,38 @@ Example:
 }
 ```
 
-### Example using a real Linux venv
+### Important: replace `/home/USER`
 
-Replace the paths with your actual paths:
+Do not copy `/home/USER` literally.
+
+Find your real home directory:
+
+```bash
+printf '%s\\n' "$HOME"
+```
+
+For example, if it prints:
+
+```text
+/home/najib
+```
+
+the configuration becomes:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "servers": {
-      "free-web-search": {
+      "local-scrape": {
         "type": "local",
         "command": [
-          "/home/USER/.venvs/free-web-search-mcp/bin/python3",
-          "/home/USER/free-web-search-mcp/local-scrape-mcp-server.py"
+          "/home/najib/.venvs/mcp-local-scrape/bin/python3",
+          "/home/najib/.config/opencode/mcp-servers/local-scrape/server.py"
         ],
-        "cwd": "/home/USER/free-web-search-mcp",
+        "cwd": "/home/najib/.config/opencode/mcp-servers/local-scrape",
         "environment": {
-          "PATH": "/home/USER/.venvs/free-web-search-mcp/bin:/usr/local/bin:/usr/bin:/bin",
+          "PATH": "/home/najib/.venvs/mcp-local-scrape/bin:/usr/local/bin:/usr/bin:/bin",
           "PYTHONUNBUFFERED": "1"
         },
         "disabled": false
@@ -197,166 +281,225 @@ Replace the paths with your actual paths:
 }
 ```
 
-Use the Python executable from the same environment where the MCP dependencies were installed.
+This matches the common layout:
 
-Find it with:
+```text
+Python environment
+~/.venvs/mcp-local-scrape/bin/python3
 
-```bash
-which python
+MCP server
+~/.config/opencode/mcp-servers/local-scrape/server.py
 ```
 
-or, after activating the venv:
+### Why use the absolute Python path?
 
-```bash
-which python3
-```
+Do not depend on an arbitrary `python3` from `PATH`.
 
-### OpenCode CLI
+Using the venv interpreter guarantees that the MCP server starts with the environment where `mcp`, `curl_cffi`, `lxml`, and `trafilatura` were installed.
 
-OpenCode V2 can also add a local MCP server from the CLI:
+### Why use `cwd`?
 
-```bash
-opencode mcp add free-web-search -- \
-  /ABS/PATH/free-web-search-mcp/.venv/bin/python \
-  /ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py
-```
+`cwd` gives the server a stable working directory. It is optional, but useful when diagnosing file/path issues.
 
-Then check the connection:
+### Why `PYTHONUNBUFFERED=1`?
+
+It makes Python I/O unbuffered, which is useful for stdio-based MCP communication and troubleshooting.
+
+### Why `PATH`?
+
+It is optional when `command` already uses an absolute Python path. Keeping it explicit makes the launched environment predictable.
+
+### Why `disabled: false`?
+
+OpenCode V2 uses the `disabled` field. Do not use `enabled: true` in this configuration. urlOpenCode MCP server documentationhttps://opencode.ai/v2/docs/mcp-servers
+
+---
+
+# 7. Start OpenCode and verify the MCP server
+
+Start or restart OpenCode after changing the configuration.
+
+Then check MCP servers:
 
 ```bash
 opencode mcp list
 ```
 
-OpenCode documents local MCP servers and the `opencode mcp add ... -- command args` syntax. citeturn696106search0turn696106search3
-
-### Tool names in OpenCode
-
-OpenCode prefixes MCP tools with the server name:
+The local server should appear as:
 
 ```text
-free-web-search_search_web
-free-web-search_search_news
-free-web-search_scrape_url
-free-web-search_search_and_scrape
+local-scrape
 ```
 
-OpenCode documents this naming behavior for MCP tools. citeturn696106search0
+OpenCode prefixes tools with the server name, so the tools are exposed like:
+
+```text
+local-scrape_search_web
+local-scrape_search_news
+local-scrape_scrape_url
+local-scrape_search_and_scrape
+```
+
+If the server does not connect, verify these three things first:
+
+```bash
+test -x ~/.venvs/mcp-local-scrape/bin/python3 && echo "python: OK"
+test -f ~/.config/opencode/mcp-servers/local-scrape/server.py && echo "server.py: OK"
+~/.venvs/mcp-local-scrape/bin/python3 -c "import mcp, curl_cffi, lxml, trafilatura; print('dependencies: OK')"
+```
 
 ---
 
-# Pi Coding Agent
+# 8. OpenCode CLI alternative
 
-Pi's core intentionally keeps MCP out of the minimal core, so **do not copy the OpenCode `mcp.servers` configuration into Pi**. Use an MCP adapter/extension. citeturn759839search6turn759839search1
-
-One current option is **pi-mcp-adapter**.
-
-## 1. Install the adapter
+Instead of editing the JSON configuration manually, OpenCode also supports adding a local MCP server from the CLI:
 
 ```bash
-pi install npm:pi-mcp-adapter
+opencode mcp add local-scrape -- \
+  ~/.venvs/mcp-local-scrape/bin/python3 \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
 ```
 
-Pi's package registry lists `pi-mcp-adapter` as an MCP adapter extension, and the package documents this installation command. citeturn622034search7turn622034search8
+Then inspect the registered server:
 
-## 2. Configure the server
+```bash
+opencode mcp list
+```
 
-For a project-local setup, create:
+The manual JSON configuration remains useful when you need `cwd`, environment variables, or other process options. urlOpenCode MCP server documentationhttps://opencode.ai/v2/docs/mcp-servers
+
+---
+
+# 9. Pi Coding Agent
+
+Pi and OpenCode use different configuration systems.
+
+For Pi, the current `pi-mcp-adapter` documentation recommends the shared MCP format:
 
 ```text
 .mcp.json
 ```
 
+for a project, or:
+
+```text
+~/.config/mcp/mcp.json
+```
+
+for a user-global shared configuration. urlPi MCP Adapter documentationhttps://github.com/nicobailon/pi-mcp-adapter
+
+## Install the Pi MCP adapter
+
+```bash
+pi install npm:pi-mcp-adapter
+```
+
+The current package is published for Pi's MCP integration. Review third-party package source before installation. urlPi MCP Adapter packagehttps://pi.dev/packages/pi-mcp-adapter
+
+## Project-local Pi setup
+
+Inside the project where you run Pi:
+
+```text
+.mcp.json
+```
+
+put:
+
+```json
+{
+  "mcpServers": {
+    "local-scrape": {
+      "command": "/home/USER/.venvs/mcp-local-scrape/bin/python3",
+      "args": [
+        "/home/USER/.config/opencode/mcp-servers/local-scrape/server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "cwd": "/home/USER/.config/opencode/mcp-servers/local-scrape"
+    }
+  }
+}
+```
+
+Replace `/home/USER` with the same absolute home path you used for OpenCode.
+
+The same installed server can therefore be shared:
+
+```text
+OpenCode
+  └── ~/.config/opencode/mcp-servers/local-scrape/server.py
+
+Pi
+  └── points to the same server.py
+```
+
+## User-global Pi setup
+
+For the adapter's shared global configuration, create:
+
+```bash
+mkdir -p ~/.config/mcp
+nano ~/.config/mcp/mcp.json
+```
+
+Then use:
+
+```json
+{
+  "mcpServers": {
+    "local-scrape": {
+      "command": "/home/USER/.venvs/mcp-local-scrape/bin/python3",
+      "args": [
+        "/home/USER/.config/opencode/mcp-servers/local-scrape/server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "cwd": "/home/USER/.config/opencode/mcp-servers/local-scrape"
+    }
+  }
+}
+```
+
+The current adapter documentation specifically identifies `~/.config/mcp/mcp.json` and `.mcp.json` as the preferred shared configuration locations. urlPi MCP Adapter documentationhttps://github.com/nicobailon/pi-mcp-adapter
+
+> Do not copy an OpenCode `mcp.servers` block into Pi. Pi's MCP adapter uses the `mcpServers` schema above.
+
+---
+
+# 10. Generic MCP clients
+
+This project is a local stdio MCP server.
+
+The essential command is:
+
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+Other MCP clients can launch the same command, but their configuration file and JSON schema may differ.
+
+---
+
+# 11. How the tools should be used
+
+## Web search
+
+Use `search_web` to discover candidate sources.
+
 Example:
 
 ```json
 {
-  "mcpServers": {
-    "free-web-search": {
-      "command": "/ABS/PATH/free-web-search-mcp/.venv/bin/python",
-      "args": [
-        "/ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py"
-      ],
-      "env": {
-        "PYTHONUNBUFFERED": "1"
-      }
-    }
-  }
-}
-```
-
-The Pi MCP adapter documents `.mcp.json` as a standard project configuration format. citeturn622034search3turn622034search6
-
-### Linux example
-
-```json
-{
-  "mcpServers": {
-    "free-web-search": {
-      "command": "/home/USER/.venvs/free-web-search-mcp/bin/python3",
-      "args": [
-        "/home/USER/free-web-search-mcp/local-scrape-mcp-server.py"
-      ],
-      "env": {
-        "PYTHONUNBUFFERED": "1"
-      }
-    }
-  }
-}
-```
-
-Then start Pi in the project:
-
-```bash
-pi
-```
-
-Open the MCP adapter interface with:
-
-```text
-/mcp
-```
-
-The current adapter documentation also supports shared global MCP configuration such as `~/.config/mcp/mcp.json`. citeturn622034search3turn622034search6
-
-> Pi MCP support changes over time. Keep the adapter version and its documentation in mind when upgrading Pi. The server itself is a standard stdio MCP server, so only the client-side configuration changes.
-
----
-
-# Generic MCP client
-
-This server is a local **stdio MCP server**.
-
-The client only needs to start:
-
-```bash
-/ABS/PATH/free-web-search-mcp/.venv/bin/python \
-  /ABS/PATH/free-web-search-mcp/local-scrape-mcp-server.py
-```
-
-The important part is that the command points to the Python environment where the dependencies are installed.
-
----
-
-# Usage
-
-## Web search
-
-Call:
-
-```text
-search_web
-```
-
-Example parameters:
-
-```json
-{
-  "query": "Python 3.14 release changes",
+  "query": "Linux kernel latest security changes",
   "count": 5
 }
 ```
 
-The response includes structured fields such as:
+The server returns metadata such as:
 
 ```text
 rank
@@ -397,7 +540,7 @@ week
 month
 ```
 
-## Scrape a selected page
+## Scrape a selected URL
 
 Example:
 
@@ -428,9 +571,9 @@ precision
 recall
 ```
 
-## Search + scrape
+## Search and scrape
 
-Example:
+Use the fast path for clear queries:
 
 ```json
 {
@@ -442,33 +585,39 @@ Example:
 }
 ```
 
-The server bounds this operation to a maximum of 5 scraped results and at most 3 concurrent workers.
+The implementation bounds this operation to a maximum of 5 scraped results and at most 3 concurrent workers.
 
 ---
 
-# Security
+# 12. Security
 
-This project performs outbound HTTP requests, so URL and network validation are important.
+This server makes outbound HTTP requests on behalf of an AI agent.
 
-## SSRF-oriented protection
+## URL validation
 
 The server:
 
 - accepts only `http` and `https`
 - rejects URLs containing username/password credentials
-- resolves hostnames before connecting
-- allows only globally routable/public IP addresses
-- blocks localhost and other non-public destinations
-- validates every redirect target again
-- pins resolved addresses with libcurl `CURLOPT_RESOLVE`
+- normalizes hostnames
+- resolves the hostname before fetching
+- allows only globally routable/public addresses
+- blocks localhost and non-public targets
+- validates redirect targets again
+
+## DNS pinning
+
+Resolved public IPs are pinned with libcurl `CURLOPT_RESOLVE`.
+
+Each worker thread uses its own `curl_cffi` session so per-session DNS state is not shared unsafely between concurrent requests.
 
 ## Response limits
 
-Current implementation limits include:
+Current implementation limits:
 
 ```text
 Max redirects:       5
-Max search results:   50
+Max search results:  50
 Max query length:     1000 characters
 Max HTTP response:   4 MiB
 Max extracted text:  100,000 characters
@@ -479,30 +628,30 @@ Batch workers:        3
 
 ## Binary content
 
-The server intentionally rejects common binary content such as PDFs, images, archives, audio, and video instead of blindly decoding them as text.
+Known binary content types and common binary magic bytes are rejected instead of being blindly decoded into large text payloads.
 
-The current scraper does not execute JavaScript.
+The scraper does not execute JavaScript.
 
 ## Retries
 
-Only transient failures are retried. The implementation also supports `Retry-After` and bounded backoff with jitter.
+Only transient HTTP/network failures are retried. The implementation supports `Retry-After` and bounded backoff with jitter.
 
 ---
 
-# Performance and token efficiency
+# 13. Performance and token efficiency
 
-The server is designed to avoid unnecessary context growth:
+The server is designed to keep agent context under control:
 
-- Search returns compact structured metadata.
-- Pages are scraped only when needed.
+- Search returns compact metadata.
+- Full pages are fetched only when needed.
 - `max_chars` bounds extracted content.
-- Search results are cached briefly.
-- Scraped pages are cached briefly.
-- Canonical URLs improve deduplication and cache reuse.
-- Batch scraping has bounded concurrency.
+- Search results use a short cache.
+- Scraped pages use a short cache.
+- Canonicalization improves deduplication and cache reuse.
+- Batch scraping uses bounded concurrency.
 - `fast` extraction is the normal path.
 
-Current cache defaults:
+Current defaults:
 
 ```text
 Search cache TTL:   120 seconds
@@ -511,63 +660,186 @@ Search cache size:   64 entries
 Scrape cache size:   32 entries
 ```
 
-Caches are in-memory and disappear when the process exits.
+Caches are memory-only and reset when the MCP process exits.
 
 ---
 
-# Source quality
+# 14. Troubleshooting
 
-This server does not decide whether a source is true.
+## "ModuleNotFoundError: No module named mcp"
 
-Agents should consider:
+The MCP client is using the wrong Python executable.
 
-- primary vs secondary source
-- source authority
-- publication date
-- canonical URL
-- whether the page directly supports the claim
-- independent confirmation
-- relevance to the question
+Check:
 
-Use search for discovery and scraping for evidence.
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 -c "import mcp; print(mcp.__file__)"
+```
+
+Then make sure the same executable is used in the MCP configuration.
+
+## "server.py not found"
+
+Check:
+
+```bash
+ls -l ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+If it does not exist:
+
+```bash
+mkdir -p ~/.config/opencode/mcp-servers/local-scrape
+cp ~/.local/src/free-web-search-mcp/local-scrape-mcp-server.py \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+## OpenCode shows the server but the tools fail
+
+Run the installed server manually with the exact Python executable:
+
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+If the process reports an import or runtime error, fix that before debugging the MCP client.
+
+## Bing returns no usable results
+
+The project detects common challenge/CAPTCHA markers and reports a failure rather than silently treating a challenge page as zero results.
+
+## A JavaScript-heavy website does not extract correctly
+
+The scraper does not execute JavaScript. A server-rendered page or another source may be required.
 
 ---
 
-# Limitations
+# 15. Updating the installation
+
+Pull the newest source:
+
+```bash
+cd ~/.local/src/free-web-search-mcp
+git pull
+```
+
+Update dependencies:
+
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 -m pip install -r requirements.txt --upgrade
+```
+
+Copy the updated server:
+
+```bash
+cp ~/.local/src/free-web-search-mcp/local-scrape-mcp-server.py \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+Run the syntax check again:
+
+```bash
+~/.venvs/mcp-local-scrape/bin/python3 -m py_compile \
+  ~/.config/opencode/mcp-servers/local-scrape/server.py
+```
+
+Restart the MCP client.
+
+---
+
+# 16. Recommended directory layout
+
+After installation, a clean Linux setup looks like:
+
+```text
+~/
+├── .local/
+│   └── src/
+│       └── free-web-search-mcp/
+│           ├── local-scrape-mcp-server.py
+│           ├── requirements.txt
+│           └── README.md
+│
+├── .venvs/
+│   └── mcp-local-scrape/
+│       └── bin/
+│           └── python3
+│
+└── .config/
+    └── opencode/
+        ├── opencode.jsonc
+        └── mcp-servers/
+            └── local-scrape/
+                └── server.py
+```
+
+This separation makes updates and troubleshooting easier:
+
+```text
+Git repository  →  source code
+Python venv     →  dependencies
+OpenCode path   →  MCP runtime entry point
+OpenCode config →  MCP registration
+```
+
+---
+
+# 17. Agent research workflow
+
+For high-confidence research:
+
+```text
+SEARCH
+  ↓
+Inspect title / URL / domain / date
+  ↓
+SELECT relevant sources
+  ↓
+SCRAPE selected URLs
+  ↓
+CROSS-CHECK important claims
+  ↓
+ANSWER with the supporting sources
+```
+
+Do not assume that the first search result is authoritative.
+
+A successful scrape means the page was extracted. It does not independently prove that the page's claims are true.
+
+---
+
+# 18. Limitations
 
 ### Bing HTML parsing
 
-Search parsing is based on Bing's public HTML pages rather than a contractual search API. Changes to Bing markup can require parser updates.
+Search results are parsed from Bing's public HTML interface, not from a contractual search API. Changes to Bing's markup can require parser updates.
 
-### JavaScript-heavy pages
+### No JavaScript execution
 
-Pages that depend on browser-side JavaScript may not extract correctly.
+Client-side rendered pages may not extract correctly.
 
 ### Binary documents
 
-Binary documents are intentionally out of scope for the normal text scraper.
+PDFs, images, archives, audio, and video are intentionally outside the normal text extraction path.
 
-### Anti-bot pages
+### Provider availability
 
-If Bing returns a challenge/CAPTCHA page, the server reports an error instead of treating it as a legitimate zero-result search.
+The project uses Bing's public web/news interface and therefore depends on that interface remaining accessible and compatible with the parser.
 
-### No search API key
+### Acceptable use
 
-The project does not require a Bing Search API key because it uses the public Bing web/news HTML endpoints. Availability and acceptable use can change, so users should follow the applicable provider terms and limits.
+Use the software responsibly and in accordance with applicable provider terms, site policies, rate limits, and law.
 
 ---
 
-# Development
+# 19. Development
 
-Activate the environment:
-
-```bash
-source .venv/bin/activate
-```
-
-Install dependencies:
+From the cloned repository:
 
 ```bash
+cd ~/.local/src/free-web-search-mcp
+source ~/.venvs/mcp-local-scrape/bin/activate
 python -m pip install -r requirements.txt
 ```
 
@@ -583,68 +855,60 @@ Run:
 python local-scrape-mcp-server.py
 ```
 
-For MCP debugging, inspect the MCP client's connection and tool-registration logs.
+The server uses MCP stdio transport and is normally started by the MCP client.
 
 ---
 
-# Repository structure
+# 20. Repository metadata
 
-Current entry point:
-
-```text
-free-web-search-mcp/
-├── local-scrape-mcp-server.py
-├── requirements.txt
-└── README.md
-```
-
-Recommended future additions:
+## Repository name
 
 ```text
-LICENSE
-.gitignore
-CHANGELOG.md
-tests/
-.github/workflows/
+free-web-search-mcp
 ```
+
+## GitHub description
+
+```text
+Free MCP web search and scraping server for AI agents. Bing Web & News search, no API key required, secure URL fetching, SSRF protection, canonicalization, caching, and bounded extraction.
+```
+
+## Suggested topics
+
+```text
+mcp
+model-context-protocol
+mcp-server
+web-search
+web-scraping
+web-research
+ai-agents
+ai-agent
+llm-tools
+bing-search
+bing-news
+python
+trafilatura
+curl-cffi
+ssrf
+```
+
+Use only topics that accurately describe the project.
 
 ---
 
-# Why this MCP server?
-
-Most search tools stop at discovery.
-
-This project is intentionally structured so an agent can separate:
-
-```text
-Discovery
-   ↓
-Source selection
-   ↓
-URL validation
-   ↓
-Content extraction
-   ↓
-Cross-check
-   ↓
-Answer
-```
-
-That makes it useful for research-heavy coding agents and AI workflows that need fresh web evidence without sending entire search pages into the context window.
-
----
-
-# License
+# 21. License
 
 No open-source license is currently declared in this repository.
 
-Add an explicit `LICENSE` file before presenting the project as a reusable open-source package.
+Add an explicit `LICENSE` file before presenting the project as an open-source package for reuse.
 
 ---
 
-## Links
+## Documentation
 
 - OpenCode MCP servers: https://opencode.ai/v2/docs/mcp-servers
-- OpenCode config: https://opencode.ai/v2/docs/config
+- OpenCode configuration: https://opencode.ai/v2/docs/config
 - OpenCode CLI: https://opencode.ai/v2/docs/cli/commands
-- Pi MCP adapter: https://pi.dev/packages/pi-mcp-adapter
+- Pi MCP Adapter: https://github.com/nicobailon/pi-mcp-adapter
+- Pi MCP Adapter package: https://pi.dev/packages/pi-mcp-adapter
