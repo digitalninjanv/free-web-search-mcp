@@ -311,7 +311,7 @@ It is optional when `command` already uses an absolute Python path. Keeping it e
 
 ### Why `disabled: false`?
 
-OpenCode V2 uses the `disabled` field. Do not use `enabled: true` in this configuration. urlOpenCode MCP server documentationhttps://opencode.ai/v2/docs/mcp-servers
+OpenCode V2 uses the `disabled` field. Do not use `enabled: true` in this configuration. [OpenCode MCP server documentation](https://opencode.ai/v2/docs/mcp-servers)
 
 ---
 
@@ -366,7 +366,7 @@ Then inspect the registered server:
 opencode mcp list
 ```
 
-The manual JSON configuration remains useful when you need `cwd`, environment variables, or other process options. urlOpenCode MCP server documentationhttps://opencode.ai/v2/docs/mcp-servers
+The manual JSON configuration remains useful when you need `cwd`, environment variables, or other process options. [OpenCode MCP server documentation](https://opencode.ai/v2/docs/mcp-servers)
 
 ---
 
@@ -463,7 +463,7 @@ Then use:
 }
 ```
 
-The current adapter documentation specifically identifies `~/.config/mcp/mcp.json` and `.mcp.json` as the preferred shared configuration locations. urlPi MCP Adapter documentationhttps://github.com/nicobailon/pi-mcp-adapter
+The current adapter documentation specifically identifies `~/.config/mcp/mcp.json` and `.mcp.json` as the preferred shared configuration locations. [Pi MCP Adapter documentation](https://github.com/nicobailon/pi-mcp-adapter)
 
 > Do not copy an OpenCode `mcp.servers` block into Pi. Pi's MCP adapter uses the `mcpServers` schema above.
 
